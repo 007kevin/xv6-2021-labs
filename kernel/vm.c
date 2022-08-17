@@ -432,3 +432,38 @@ copyinstr(pagetable_t pagetable, char *dst, uint64 srcva, uint64 max)
     return -1;
   }
 }
+
+void
+vmprintwalk(pagetable_t pagetable, char *prefix)
+{
+  // there are 2^9 = 512 PTEs in a page table.
+  for(int i = 0; i < 512; i++){
+    pte_t pte = pagetable[i];
+    if((pte & PTE_V)){
+      uint64 pa = PTE2PA(pte);
+      printf("%s%d: pte %p pa %p\n", prefix, i, pte, pa);
+      if ((pte & (PTE_R|PTE_W|PTE_X)) == 0){
+        // this PTE points to a lower-level page table.
+
+        // quick hack to concat string. TODO: create strcat
+        int len = strlen(prefix);
+        char next[len+4];
+        strncpy(next, prefix, len);
+        next[len] = ' ';
+        next[len+1] = '.';
+        next[len+2] = '.';
+        next[len+3] = 0;
+
+        // continue to lower-level page
+        vmprintwalk((pagetable_t)pa, next);
+      }
+    }
+  }
+}
+
+void
+vmprint(pagetable_t pagetable)
+{
+  printf("page table %p\n");
+  vmprintwalk(pagetable, " ..");
+}
