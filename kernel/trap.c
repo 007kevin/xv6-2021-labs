@@ -29,6 +29,22 @@ trapinithart(void)
   w_stvec((uint64)kernelvec);
 }
 
+int
+handlesigalarm()
+{
+  struct proc *p = myproc();
+  struct sigalarm *s = &p->sigalarm;
+  if (s->fn != 0 || s->ticks != 0){
+    s->count--;
+    if (s->count == 0){
+      s->count = s->ticks;
+      p->trapframe->epc = s->fn;
+      usertrapret();
+    }
+  }
+  return 0;
+}
+
 //
 // handle an interrupt, exception, or system call from user space.
 // called from trampoline.S
@@ -66,7 +82,10 @@ usertrap(void)
 
     syscall();
   } else if((which_dev = devintr()) != 0){
-    // ok
+    // handle sigalarm
+    if (which_dev == 2){
+      handlesigalarm();
+    }
   } else {
     printf("usertrap(): unexpected scause %p pid=%d\n", r_scause(), p->pid);
     printf("            sepc=%p stval=%p\n", r_sepc(), r_stval());
@@ -217,4 +236,3 @@ devintr()
     return 0;
   }
 }
-

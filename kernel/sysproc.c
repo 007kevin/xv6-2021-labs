@@ -100,6 +100,22 @@ sys_uptime(void)
 uint64
 sys_sigalarm(void)
 {
+  int ticks;
+  uint64 fn;
+  if(argint(0, &ticks) < 0)
+    return -1;
+  if(argaddr(1, &fn) < 0)
+    return -1;
+  struct proc *p = myproc();
+  if (ticks == 0 && fn == 0){
+    p->sigalarm.fn = 0;
+    p->sigalarm.ticks = 0;
+    p->sigalarm.count = 0;
+  } else {
+    p->sigalarm.fn = fn;
+    p->sigalarm.ticks = ticks;
+    p->sigalarm.count = ticks;
+  }
   return 0;
 }
 
@@ -108,5 +124,3 @@ sys_sigreturn(void)
 {
   return 0;
 }
-
-

@@ -26,6 +26,13 @@ struct cpu {
   int intena;                 // Were interrupts enabled before push_off()?
 };
 
+// per-process sigalarm data
+struct sigalarm {
+  uint64 fn; // sigalarm handler
+  int ticks; // ticks until sigalarm_fn call
+  int count; // current count of ticks
+};
+
 extern struct cpu cpus[NCPU];
 
 // per-process data for the trap handling code in trampoline.S.
@@ -105,4 +112,5 @@ struct proc {
   struct file *ofile[NOFILE];  // Open files
   struct inode *cwd;           // Current directory
   char name[16];               // Process name (debugging)
+  struct sigalarm sigalarm;  // sigalarm data
 };
