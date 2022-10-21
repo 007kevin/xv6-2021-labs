@@ -26,13 +26,6 @@ struct cpu {
   int intena;                 // Were interrupts enabled before push_off()?
 };
 
-// per-process sigalarm data
-struct sigalarm {
-  uint64 fn; // sigalarm handler
-  int ticks; // ticks until sigalarm_fn call
-  int count; // current count of ticks
-};
-
 extern struct cpu cpus[NCPU];
 
 // per-process data for the trap handling code in trampoline.S.
@@ -85,6 +78,15 @@ struct trapframe {
   /* 264 */ uint64 t4;
   /* 272 */ uint64 t5;
   /* 280 */ uint64 t6;
+};
+
+// per-process sigalarm data
+struct sigalarm {
+  uint64 fn; // sigalarm handler
+  int ticks; // ticks until sigalarm_fn call
+  int count; // current count of ticks
+  int running; // whether handler is running
+  struct trapframe trapframe; // saved user state when calling user handler
 };
 
 enum procstate { UNUSED, USED, SLEEPING, RUNNABLE, RUNNING, ZOMBIE };

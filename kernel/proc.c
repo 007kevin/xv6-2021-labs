@@ -145,6 +145,7 @@ found:
   p->sigalarm.fn = 0;
   p->sigalarm.ticks = 0;
   p->sigalarm.count = 0;
+  p->sigalarm.running = 0;
 
   return p;
 }

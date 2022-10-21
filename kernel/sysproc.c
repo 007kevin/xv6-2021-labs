@@ -111,10 +111,12 @@ sys_sigalarm(void)
     p->sigalarm.fn = 0;
     p->sigalarm.ticks = 0;
     p->sigalarm.count = 0;
+    p->sigalarm.running = 0;
   } else {
     p->sigalarm.fn = fn;
     p->sigalarm.ticks = ticks;
     p->sigalarm.count = ticks;
+    p->sigalarm.running = 0;
   }
   return 0;
 }
@@ -122,5 +124,10 @@ sys_sigalarm(void)
 uint64
 sys_sigreturn(void)
 {
+  struct proc *p = myproc();
+  struct sigalarm *s = &p->sigalarm;
+  s->count = s->ticks; // reset counter
+  s->running = 0;
+  copytrapframe(&s->trapframe, p->trapframe);
   return 0;
 }
