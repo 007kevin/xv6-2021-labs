@@ -74,7 +74,8 @@ usertrap(void)
     // scause 13 = load page fault
     // scause 15 = store page fault
     uint64 va = r_stval();
-    printf("stval=%p\n", va);
+    uvmcow(p->pagetable, va);
+//    printf("stval=%p\n", va);
   }
   else if((which_dev = devintr()) != 0){
     // ok

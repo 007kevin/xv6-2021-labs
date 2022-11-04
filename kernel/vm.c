@@ -312,7 +312,7 @@ uvmcopy(pagetable_t old, pagetable_t new, uint64 sz)
       panic("uvmcopy: page not present");
     pa = PTE2PA(*pte);
     flags = PTE_FLAGS(*pte);
-    //flags &= ~PTE_W; // disable write
+    flags &= ~PTE_W; // disable write
     flags |= PTE_C; // enable cow
     if((mem = kalloc()) == 0)
       goto err;
@@ -344,8 +344,18 @@ uvmclear(pagetable_t pagetable, uint64 va)
 
 // copy on write user page at pagetable's virtual address
 uint64
-uvmcow(pagetable_t t, uint64 va)
+uvmcow(pagetable_t pagetable, uint64 va)
 {
+  pte_t *pte;
+
+  if((pte = walk(pagetable, va, 0)) == 0)
+    panic("uvmcow: pte should exist");
+  if((*pte & PTE_V) == 0)
+    panic("uvmcopy: page not present");
+  if((*pte & PTE_C) == 0)
+    panic("uvmcopy: page not copy on write enabled");
+  *pte |= PTE_W;
+
   return 0;
 }
 
