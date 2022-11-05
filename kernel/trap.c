@@ -75,7 +75,6 @@ usertrap(void)
     // scause 15 = store page fault
     uint64 va = r_stval();
     uvmcow(p->pagetable, va);
-//    printf("stval=%p\n", va);
   }
   else if((which_dev = devintr()) != 0){
     // ok
@@ -84,7 +83,6 @@ usertrap(void)
     printf("            sepc=%p stval=%p\n", r_sepc(), r_stval());
     p->killed = 1;
   }
-
   if(p->killed)
     exit(-1);
 

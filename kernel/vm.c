@@ -312,8 +312,9 @@ uvmcopy(pagetable_t old, pagetable_t new, uint64 sz)
       panic("uvmcopy: page not present");
     pa = PTE2PA(*pte);
     flags = PTE_FLAGS(*pte);
-    flags &= ~PTE_W; // disable write
-    flags |= PTE_C; // enable cow
+    flags &= ~PTE_W;           // disable write
+    flags |= PTE_C;            // enable cow
+    *pte  |= flags;            // update parent pte permission
     if((mem = kalloc()) == 0)
       goto err;
     memmove(mem, (char*)pa, PGSIZE);
@@ -351,12 +352,12 @@ uvmcow(pagetable_t pagetable, uint64 va)
   if((pte = walk(pagetable, va, 0)) == 0)
     panic("uvmcow: pte should exist");
   if((*pte & PTE_V) == 0)
-    panic("uvmcopy: page not present");
+    panic("uvmcow: page not present");
   if((*pte & PTE_C) == 0)
-    panic("uvmcopy: page not copy on write enabled");
+    panic("uvmcow: copy on write not enabled");
   *pte |= PTE_W;
 
-  return 0;
+  return PTE2PA(*pte);
 }
 
 // Copy from kernel to user.
@@ -370,6 +371,10 @@ copyout(pagetable_t pagetable, uint64 dstva, char *src, uint64 len)
   while(len > 0){
     va0 = PGROUNDDOWN(dstva);
     pa0 = walkaddr(pagetable, va0);
+    if(PA2PTE(pa0) & PTE_C){
+      printf("encountered PTE_C during copyout\n");
+      pa0 = uvmcow(pagetable, va0);
+    }
     if(pa0 == 0)
       return -1;
     n = PGSIZE - (dstva - va0);
