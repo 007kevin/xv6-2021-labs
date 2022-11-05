@@ -14,6 +14,26 @@ void freerange(void *pa_start, void *pa_end);
 extern char end[]; // first address after kernel.
                    // defined by kernel.ld.
 
+// page reference counter for copy on write support.
+int ref[PHYSTOP/PGSIZE];
+
+int
+getref(void *pa){
+  return ref[((uint64) pa)/PGSIZE];
+}
+
+void
+addref(void *pa){
+  ref[((uint64) pa)/PGSIZE] = getref(pa) + 1;
+}
+
+void
+subref(void *pa){
+  int count = getref(pa);
+  if (count > 0)
+    ref[((uint64) pa)/PGSIZE] = count - 1;
+}
+
 struct run {
   struct run *next;
 };
@@ -57,8 +77,11 @@ kfree(void *pa)
   r = (struct run*)pa;
 
   acquire(&kmem.lock);
-  r->next = kmem.freelist;
-  kmem.freelist = r;
+  subref(pa);
+  if (getref(pa) == 0){
+    r->next = kmem.freelist;
+    kmem.freelist = r;
+  }
   release(&kmem.lock);
 }
 
@@ -72,8 +95,10 @@ kalloc(void)
 
   acquire(&kmem.lock);
   r = kmem.freelist;
-  if(r)
+  if(r){
+    addref(r);
     kmem.freelist = r->next;
+  }
   release(&kmem.lock);
 
   if(r)
