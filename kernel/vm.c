@@ -314,7 +314,7 @@ uvmcopy(pagetable_t old, pagetable_t new, uint64 sz)
     flags = PTE_FLAGS(*pte);
     flags &= ~PTE_W;           // disable write
     flags |= PTE_C;            // enable cow
-    *pte  |= flags;            // update parent pte permission
+    *pte =  PA2PTE(pa) | flags; // update parent pte permission
     if((mem = kalloc()) == 0)
       goto err;
     memmove(mem, (char*)pa, PGSIZE);
@@ -355,8 +355,10 @@ uvmcow(pagetable_t pagetable, uint64 va)
     panic("uvmcow: page not present");
   if((*pte & PTE_U) == 0)
     panic("uvmcow: no user access");
+  if(*pte & PTE_W)
+    panic("uvmcow: pte write enabled");
   if((*pte & PTE_C) == 0)
-    panic("uvmcow: copy on write not enabled");
+    panic("uvmcow: copy on write disabled");
   *pte |= PTE_W;
 }
 
