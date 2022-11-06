@@ -344,7 +344,7 @@ uvmclear(pagetable_t pagetable, uint64 va)
 }
 
 // copy on write user page at pagetable's virtual address
-uint64
+void
 uvmcow(pagetable_t pagetable, uint64 va)
 {
   pte_t *pte;
@@ -353,11 +353,11 @@ uvmcow(pagetable_t pagetable, uint64 va)
     panic("uvmcow: pte should exist");
   if((*pte & PTE_V) == 0)
     panic("uvmcow: page not present");
+  if((*pte & PTE_U) == 0)
+    panic("uvmcow: no user access");
   if((*pte & PTE_C) == 0)
     panic("uvmcow: copy on write not enabled");
   *pte |= PTE_W;
-
-  return PTE2PA(*pte);
 }
 
 // Copy from kernel to user.
@@ -367,13 +367,17 @@ int
 copyout(pagetable_t pagetable, uint64 dstva, char *src, uint64 len)
 {
   uint64 n, va0, pa0;
+  pte_t *pte;
 
   while(len > 0){
     va0 = PGROUNDDOWN(dstva);
-    pa0 = walkaddr(pagetable, va0);
-    if(PA2PTE(pa0) & PTE_C){
+    pte = walk(pagetable, va0, 0);
+    if(((*pte & PTE_W) == 0) && (*pte & PTE_C)){
       printf("encountered PTE_C during copyout\n");
-      pa0 = uvmcow(pagetable, va0);
+      uvmcow(pagetable, va0);
+    }
+    pa0 = walkaddr(pagetable, va0);
+    if(*walk(pagetable, va0, 0) & PTE_C){
     }
     if(pa0 == 0)
       return -1;

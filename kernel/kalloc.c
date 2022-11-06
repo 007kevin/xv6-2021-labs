@@ -10,6 +10,7 @@
 #include "defs.h"
 
 void freerange(void *pa_start, void *pa_end);
+uint64 kfreemem(void);
 
 extern char end[]; // first address after kernel.
                    // defined by kernel.ld.
@@ -76,6 +77,9 @@ kfree(void *pa)
 
   r = (struct run*)pa;
 
+  /* if (getref(pa) > 0) */
+  /*     printf("kfreemem: %d\n", kfreemem()); */
+
   acquire(&kmem.lock);
   subref(pa);
   if (getref(pa) == 0){
@@ -105,3 +109,19 @@ kalloc(void)
     memset((char*)r, 5, PGSIZE); // fill with junk
   return (void*)r;
 }
+
+// Returns the amount of free memory in bytes
+uint64
+kfreemem(void)
+{
+  uint64 freenodes = 0;
+  acquire(&kmem.lock);
+  struct run *current = kmem.freelist;
+  while(current) {
+    freenodes++;
+    current = current->next;
+  }
+  release(&kmem.lock);
+  return freenodes * PGSIZE;
+}
+
