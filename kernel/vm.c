@@ -303,7 +303,6 @@ uvmcopy(pagetable_t old, pagetable_t new, uint64 sz)
   pte_t *pte;
   uint64 pa, i;
   uint flags;
-  char *mem;
 
   for(i = 0; i < sz; i += PGSIZE){
     if((pte = walk(old, i, 0)) == 0)
@@ -312,16 +311,13 @@ uvmcopy(pagetable_t old, pagetable_t new, uint64 sz)
       panic("uvmcopy: page not present");
     pa = PTE2PA(*pte);
     flags = PTE_FLAGS(*pte);
-    flags &= ~PTE_W;           // disable write
-    flags |= PTE_C;            // enable cow
+    flags &= ~PTE_W;            // disable write
+    flags |= PTE_C;             // enable cow
     *pte =  PA2PTE(pa) | flags; // update parent pte permission
-    if((mem = kalloc()) == 0)
-      goto err;
-    memmove(mem, (char*)pa, PGSIZE);
-    if(mappages(new, i, PGSIZE, (uint64)mem, flags) != 0){
-      kfree(mem);
+    if(mappages(new, i, PGSIZE, pa, flags) != 0){
       goto err;
     }
+    addref((void *)pa);        // increment page reference
   }
   return 0;
 
@@ -348,6 +344,9 @@ void
 uvmcow(pagetable_t pagetable, uint64 va)
 {
   pte_t *pte;
+  char *mem;
+  uint64 pa;
+  uint flags;
 
   if((pte = walk(pagetable, va, 0)) == 0)
     panic("uvmcow: pte should exist");
@@ -358,8 +357,18 @@ uvmcow(pagetable_t pagetable, uint64 va)
   if(*pte & PTE_W)
     panic("uvmcow: pte write enabled");
   if((*pte & PTE_C) == 0)
-    panic("uvmcow: copy on write disabled");
-  *pte |= PTE_W;
+    panic("uvmcow: copy on write not enabled");
+  if((mem = kalloc()) == 0)
+    panic("uvmcow: kalloc");
+  pa = PTE2PA(*pte);
+  flags = PTE_FLAGS(*pte);
+  flags |= PTE_W;  // enable write
+  memmove(mem, (char*)pa, PGSIZE);
+  if(mappages(pagetable, va, PGSIZE, (uint64)mem, flags) != 0){
+    kfree((void *) mem);
+    panic("uvmcow: mappages");
+  }
+  kfree((void *) pa);
 }
 
 // Copy from kernel to user.
