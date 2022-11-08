@@ -364,7 +364,7 @@ uvmcow(pagetable_t pagetable, uint64 va)
   flags = PTE_FLAGS(*pte);
   flags |= PTE_W;  // enable write
   memmove(mem, (char*)pa, PGSIZE);
-  if(mappages(pagetable, va, PGSIZE, (uint64)mem, flags) != 0){
+  if(mappages(pagetable, PGROUNDDOWN(va), PGSIZE, (uint64)mem, flags) != 0){
     kfree((void *) mem);
     panic("uvmcow: mappages");
   }
@@ -384,7 +384,6 @@ copyout(pagetable_t pagetable, uint64 dstva, char *src, uint64 len)
     va0 = PGROUNDDOWN(dstva);
     pte = walk(pagetable, va0, 0);
     if(((*pte & PTE_W) == 0) && (*pte & PTE_C)){
-      printf("encountered PTE_C during copyout\n");
       uvmcow(pagetable, va0);
     }
     pa0 = walkaddr(pagetable, va0);

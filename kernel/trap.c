@@ -73,7 +73,6 @@ usertrap(void)
     // scause 12 = instruction page fault
     // scause 13 = load page fault
     // scause 15 = store page fault
-    printf("cow page fault: %d\n", p->pid);
     uint64 va = r_stval();
     uvmcow(p->pagetable, va);
   }
