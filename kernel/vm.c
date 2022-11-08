@@ -148,7 +148,7 @@ mappages(pagetable_t pagetable, uint64 va, uint64 size, uint64 pa, int perm)
   for(;;){
     if((pte = walk(pagetable, a, 1)) == 0)
       return -1;
-    if(*pte & PTE_V && !(*pte & PTE_C))
+    if(*pte & PTE_V)
       panic("mappages: remap");
     *pte = PA2PTE(pa) | perm | PTE_V;
     if(a == last)
@@ -313,11 +313,14 @@ uvmcopy(pagetable_t old, pagetable_t new, uint64 sz)
     flags = PTE_FLAGS(*pte);
     flags &= ~PTE_W;            // disable write
     flags |= PTE_C;             // enable cow
-    *pte =  PA2PTE(pa) | flags; // update parent pte permission
     if(mappages(new, i, PGSIZE, pa, flags) != 0){
       goto err;
     }
     addref((void *)pa);        // increment page reference
+    uvmunmap(old, i, 1, 0);
+    if(mappages(old, i, PGSIZE, pa, flags) != 0){
+      goto err;
+    }
   }
   return 0;
 
@@ -347,6 +350,7 @@ uvmcow(pagetable_t pagetable, uint64 va)
   char *mem;
   uint64 pa;
   uint flags;
+  va = PGROUNDDOWN(va);
 
   if((pte = walk(pagetable, va, 0)) == 0)
     panic("uvmcow: pte should exist");
@@ -363,12 +367,13 @@ uvmcow(pagetable_t pagetable, uint64 va)
   pa = PTE2PA(*pte);
   flags = PTE_FLAGS(*pte);
   flags |= PTE_W;  // enable write
+  flags &= ~PTE_C; // disable cow
   memmove(mem, (char*)pa, PGSIZE);
+  uvmunmap(pagetable, va, 1, 1);
   if(mappages(pagetable, va, PGSIZE, (uint64)mem, flags) != 0){
     kfree((void *) mem);
     panic("uvmcow: mappages");
   }
-  kfree((void *) pa);
 }
 
 // Copy from kernel to user.
@@ -384,7 +389,6 @@ copyout(pagetable_t pagetable, uint64 dstva, char *src, uint64 len)
     va0 = PGROUNDDOWN(dstva);
     pte = walk(pagetable, va0, 0);
     if(((*pte & PTE_W) == 0) && (*pte & PTE_C)){
-      printf("encountered PTE_C during copyout\n");
       uvmcow(pagetable, va0);
     }
     pa0 = walkaddr(pagetable, va0);
