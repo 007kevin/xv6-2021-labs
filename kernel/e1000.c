@@ -102,13 +102,20 @@ e1000_transmit(struct mbuf *m)
   // the TX descriptor ring so that the e1000 sends it. Stash
   // a pointer so that it can be freed after sending.
   //
+  printf("x\n");
+  acquire(&e1000_lock);
+  printf("y\n");
+
   int i;
   i = regs[E1000_TDT];
 
   // E1000 hasn't finished the corresponding previous transmission
   // request, so return an error.
-  if (tx_ring[i].status != E1000_TXD_STAT_DD)
+  if ((tx_ring[i].status | E1000_TXD_STAT_DD) != E1000_TXD_STAT_DD){
+    release(&e1000_lock);
+    printf("z\n");
     return -1;
+  }
 
   // free the last mbuf that was transmitted from that descriptor (if there was one)
   if (tx_ring[i].addr != 0)
@@ -128,7 +135,8 @@ e1000_transmit(struct mbuf *m)
   // update the ring position
   regs[E1000_TDT] = (regs[E1000_TDT] + 1) % TX_RING_SIZE;
 
-  printf("sent\n");
+  release(&e1000_lock);
+  printf("z\n");
   return 0;
 }
 
@@ -141,7 +149,36 @@ e1000_recv(void)
   // Check for packets that have arrived from the e1000
   // Create and deliver an mbuf for each packet (using net_rx()).
   //
-  printf("here\n");
+  acquire(&e1000_lock);
+
+  int i;
+  i = (regs[E1000_RDT] + 1) % RX_RING_SIZE;
+
+  // check if a new packet is available by checking for the
+  // E1000_RXD_STAT_DD bit in the status portion of the descriptor. If
+  // not, stop.
+  if ((rx_ring[i].status & E1000_RXD_STAT_DD) != E1000_RXD_STAT_DD){
+    release(&e1000_lock);
+    return;
+  }
+
+  // update the mbuf's m->len to the length reported in the
+  // descriptor. Deliver the mbuf to the network stack using net_rx().
+  rx_mbufs[i]->len = rx_ring[i].length;
+  net_rx(rx_mbufs[i]);
+
+  // allocate a new mbuf using mbufalloc() to replace the one just
+  // given to net_rx(). Program its data pointer (m->head) into the
+  // descriptor. Clear the descriptor's status bits to zero.
+  rx_mbufs[i] = mbufalloc(0);
+  if (!rx_mbufs[i])
+    panic("e1000_recv");
+  rx_ring[i].addr = (uint64) rx_mbufs[i]->head;
+  rx_ring[i].status = 0;
+
+  // update the E1000_RDT register to be the index of the last ring descriptor processed.
+  regs[E1000_RDT] = i;
+  release(&e1000_lock);
 }
 
 void
