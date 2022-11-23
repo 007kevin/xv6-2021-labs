@@ -20,6 +20,8 @@ static struct mbuf *rx_mbufs[RX_RING_SIZE];
 static volatile uint32 *regs;
 
 struct spinlock e1000_lock;
+struct spinlock e1000_tx_lock;
+struct spinlock e1000_rx_lock;
 
 // called by pci_init().
 // xregs is the memory address at which the
@@ -30,6 +32,8 @@ e1000_init(uint32 *xregs)
   int i;
 
   initlock(&e1000_lock, "e1000");
+  initlock(&e1000_tx_lock, "e1000_tx");
+  initlock(&e1000_rx_lock, "e1000_rx");
 
   regs = xregs;
 
@@ -102,9 +106,7 @@ e1000_transmit(struct mbuf *m)
   // the TX descriptor ring so that the e1000 sends it. Stash
   // a pointer so that it can be freed after sending.
   //
-  printf("x\n");
-  acquire(&e1000_lock);
-  printf("y\n");
+  acquire(&e1000_tx_lock);
 
   int i;
   i = regs[E1000_TDT];
@@ -112,8 +114,7 @@ e1000_transmit(struct mbuf *m)
   // E1000 hasn't finished the corresponding previous transmission
   // request, so return an error.
   if ((tx_ring[i].status | E1000_TXD_STAT_DD) != E1000_TXD_STAT_DD){
-    release(&e1000_lock);
-    printf("z\n");
+    release(&e1000_tx_lock);
     return -1;
   }
 
@@ -135,8 +136,7 @@ e1000_transmit(struct mbuf *m)
   // update the ring position
   regs[E1000_TDT] = (regs[E1000_TDT] + 1) % TX_RING_SIZE;
 
-  release(&e1000_lock);
-  printf("z\n");
+  release(&e1000_tx_lock);
   return 0;
 }
 
@@ -149,7 +149,7 @@ e1000_recv(void)
   // Check for packets that have arrived from the e1000
   // Create and deliver an mbuf for each packet (using net_rx()).
   //
-  acquire(&e1000_lock);
+  acquire(&e1000_rx_lock);
 
   int i;
   i = (regs[E1000_RDT] + 1) % RX_RING_SIZE;
@@ -158,7 +158,7 @@ e1000_recv(void)
   // E1000_RXD_STAT_DD bit in the status portion of the descriptor. If
   // not, stop.
   if ((rx_ring[i].status & E1000_RXD_STAT_DD) != E1000_RXD_STAT_DD){
-    release(&e1000_lock);
+    release(&e1000_rx_lock);
     return;
   }
 
@@ -178,7 +178,7 @@ e1000_recv(void)
 
   // update the E1000_RDT register to be the index of the last ring descriptor processed.
   regs[E1000_RDT] = i;
-  release(&e1000_lock);
+  release(&e1000_rx_lock);
 }
 
 void
