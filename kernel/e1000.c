@@ -134,7 +134,7 @@ e1000_transmit(struct mbuf *m)
   tx_mbufs[i] = m;
 
   // update the ring position
-  regs[E1000_TDT] = (regs[E1000_TDT] + 1) % TX_RING_SIZE;
+  regs[E1000_TDT] = (i + 1) % TX_RING_SIZE;
 
   release(&e1000_tx_lock);
   return 0;
@@ -153,31 +153,36 @@ e1000_recv(void)
 
   int i;
   i = (regs[E1000_RDT] + 1) % RX_RING_SIZE;
+  while(1){
+    if (i == regs[E1000_RDH])
+      break;
 
-  // check if a new packet is available by checking for the
-  // E1000_RXD_STAT_DD bit in the status portion of the descriptor. If
-  // not, stop.
-  if ((rx_ring[i].status & E1000_RXD_STAT_DD) != E1000_RXD_STAT_DD){
-    release(&e1000_rx_lock);
-    return;
+    // check if a new packet is available by checking for the
+    // E1000_RXD_STAT_DD bit in the status portion of the descriptor. If
+    // not, stop.
+    if ((rx_ring[i].status & E1000_RXD_STAT_DD) != E1000_RXD_STAT_DD)
+      break;
+
+    // update the mbuf's m->len to the length reported in the
+    // descriptor. Deliver the mbuf to the network stack using net_rx().
+    rx_mbufs[i]->len = rx_ring[i].length;
+    net_rx(rx_mbufs[i]);
+
+    // allocate a new mbuf using mbufalloc() to replace the one just
+    // given to net_rx(). Program its data pointer (m->head) into the
+    // descriptor. Clear the descriptor's status bits to zero.
+    rx_mbufs[i] = mbufalloc(0);
+    if (!rx_mbufs[i])
+      panic("e1000_recv");
+    rx_ring[i].addr = (uint64) rx_mbufs[i]->head;
+    rx_ring[i].status = 0;
+
+    // update the E1000_RDT register to be the index of the last ring descriptor processed.
+    regs[E1000_RDT] = i;
+
+    i = (i + 1) % RX_RING_SIZE;
   }
 
-  // update the mbuf's m->len to the length reported in the
-  // descriptor. Deliver the mbuf to the network stack using net_rx().
-  rx_mbufs[i]->len = rx_ring[i].length;
-  net_rx(rx_mbufs[i]);
-
-  // allocate a new mbuf using mbufalloc() to replace the one just
-  // given to net_rx(). Program its data pointer (m->head) into the
-  // descriptor. Clear the descriptor's status bits to zero.
-  rx_mbufs[i] = mbufalloc(0);
-  if (!rx_mbufs[i])
-    panic("e1000_recv");
-  rx_ring[i].addr = (uint64) rx_mbufs[i]->head;
-  rx_ring[i].status = 0;
-
-  // update the E1000_RDT register to be the index of the last ring descriptor processed.
-  regs[E1000_RDT] = i;
   release(&e1000_rx_lock);
 }
 
