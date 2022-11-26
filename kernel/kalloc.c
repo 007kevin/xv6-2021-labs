@@ -21,7 +21,6 @@ struct run {
 struct {
   struct spinlock lock;
   struct run *freelist;
-  int size;
 } kmem[NCPU];
 
 
@@ -93,6 +92,21 @@ kalloc(void)
   acquire(&kmem[id].lock);
   struct run *r;
   r = kmem[id].freelist;
+  if(!r){
+    struct run *s;
+    for(int i = 0; i < NCPU; ++i){
+      if (i == id) continue;
+      acquire(&kmem[i].lock);
+      s = kmem[i].freelist;
+      if (s){
+        kmem[i].freelist = s->next;
+        s->next = kmem[id].freelist;
+        kmem[id].freelist = s;
+        r = s;
+      }
+      release(&kmem[i].lock);
+    }
+  }
   if(r)
     kmem[id].freelist = r->next;
   release(&kmem[id].lock);
