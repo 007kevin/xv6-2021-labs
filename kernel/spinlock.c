@@ -66,7 +66,7 @@ acquire(struct spinlock *lk)
     panic("acquire");
 
 #ifdef LAB_LOCK
-    __sync_fetch_and_add(&(lk->n), 1);
+  __sync_fetch_and_add(&(lk->n), 1);
 #endif      
 
   // On RISC-V, sync_lock_test_and_set turns into an atomic swap:
