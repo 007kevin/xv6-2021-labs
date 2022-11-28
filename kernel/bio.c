@@ -25,7 +25,7 @@
 
 // Size of the bcache bucket. Using a prime number reduces
 // the likelihood of a collision.
-#define NBUCKET 13
+#define NBUCKET 17
 
 struct {
   struct spinlock lock;
@@ -81,22 +81,27 @@ bget(uint dev, uint blockno)
   // Not cached.
   // Recycle the least recently used (LRU) unused buffer.
   acquire(&bcache.lock);
+  struct buf *lb = 0; // least recently used buf
   for(int i = 0; i < NBUF; ++i){
     b = &bcache.buf[i];
-    if(b->refcnt ==0){
-      b->dev = dev;
-      b->blockno = blockno;
-      b->valid = 0;
-      b->refcnt = 1;
-      release(&bcache.lock);
-      b->next = bcache.bucket[key].next;
-      b->prev = &bcache.bucket[key];
-      bcache.bucket[key].next->prev = b;
-      bcache.bucket[key].next = b;
-      release(&bcache.bucketlock[key]);
-      acquiresleep(&b->lock);
-      return b;
+    if((lb == 0 && b->refcnt == 0) || (b->refcnt == 0 && lb->ticks > b->ticks)){
+      lb = b;
     }
+  }
+  b = lb;
+  if (b) {
+    b->dev = dev;
+    b->blockno = blockno;
+    b->valid = 0;
+    b->refcnt = 1;
+    b->next = bcache.bucket[key].next;
+    b->prev = &bcache.bucket[key];
+    bcache.bucket[key].next->prev = b;
+    bcache.bucket[key].next = b;
+    release(&bcache.lock);
+    release(&bcache.bucketlock[key]);
+    acquiresleep(&b->lock);
+    return b;
   }
   panic("bget: no buffers");
 }
@@ -143,22 +148,25 @@ brelse(struct buf *b)
     b->prev->next = b->next;
     b->prev = 0;
     b->next = 0 ;
+    b->ticks = ticks; // record negative value to compare against 0
   }
   release(&bcache.bucketlock[key]);
 }
 
 void
 bpin(struct buf *b) {
-  acquire(&bcache.lock);
+  int key = (b->blockno)%NBUCKET;
+  acquire(&bcache.bucketlock[key]);
   b->refcnt++;
-  release(&bcache.lock);
+  release(&bcache.bucketlock[key]);
 }
 
 void
 bunpin(struct buf *b) {
-  acquire(&bcache.lock);
+  int key = (b->blockno)%NBUCKET;
+  acquire(&bcache.bucketlock[key]);
   b->refcnt--;
-  release(&bcache.lock);
+  release(&bcache.bucketlock[key]);
 }
 
 
