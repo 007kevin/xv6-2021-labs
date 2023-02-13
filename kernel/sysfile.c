@@ -515,6 +515,8 @@ sys_symlink(void)
 {
   char target[MAXPATH], path[MAXPATH];
   struct inode *ip;
+  struct syment se;
+
   if(argstr(0, target, MAXPATH) < 0 || argstr(1, path, MAXPATH) < 0)
     return -1;
   begin_op();
@@ -523,9 +525,6 @@ sys_symlink(void)
     return -1;
   }
   // Write symlink entry into the inode
-  struct syment se;
-  if(readi(ip, 0, (uint64)&se, 0, sizeof(se)) != sizeof(se))
-    panic("sys_symlink read");
   strncpy(target, se.target, MAXPATH);
   if(writei(ip, 0, (uint64)&se, 0, sizeof(se)) != sizeof(se))
     panic("sys_symlink write");
