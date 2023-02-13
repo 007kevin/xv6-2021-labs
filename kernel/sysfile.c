@@ -289,8 +289,9 @@ sys_open(void)
   char path[MAXPATH];
   int fd, omode;
   struct file *f;
-  struct inode *ip;
-  int n;
+  struct inode *ip, *nip;
+  struct syment se;
+  int n,i;
 
   if((n = argstr(0, path, MAXPATH)) < 0 || argint(1, &omode) < 0)
     return -1;
@@ -308,8 +309,30 @@ sys_open(void)
       end_op();
       return -1;
     }
-    ilock(ip);
-    if(ip->type == T_DIR && omode != O_RDONLY){
+    for(i = 0; i < 10; ++i){
+      ilock(ip);
+      if(ip->type == T_DIR && omode != O_RDONLY){
+        iunlockput(ip);
+        end_op();
+        return -1;
+      } else break;
+      if(ip->type == T_SYMLINK){
+        if(omode & O_NOFOLLOW) break;
+        else {
+          if(readi(ip, 0, (uint64)&se, 0, sizeof(se)) != sizeof(se))
+            panic("sys_symlink read");
+          if((nip = namei(se.target)) == 0){
+            iunlockput(ip);
+            end_op();
+            return -1;
+          }
+          iunlockput(ip);
+          ip=nip;
+        }
+      }
+    }
+    // cycle
+    if(i == 10){
       iunlockput(ip);
       end_op();
       return -1;
@@ -485,8 +508,30 @@ sys_pipe(void)
   return 0;
 }
 
+// Create a new symbolic link at path that referes to a file name by target.
+// create -> dirlink checks whether name already exists in path.
 uint64
 sys_symlink(void)
 {
+  char target[MAXPATH], path[MAXPATH];
+  struct inode *ip;
+  if(argstr(0, target, MAXPATH) < 0 || argstr(1, path, MAXPATH) < 0)
+    return -1;
+  begin_op();
+  if((ip = create(path, T_SYMLINK, 0, 0)) == 0){
+    end_op();
+    return -1;
+  }
+  ilock(ip);
+  // Write symlink entry into the inode
+  struct syment se;
+  if(readi(ip, 0, (uint64)&se, 0, sizeof(se)) != sizeof(se))
+    panic("sys_symlink read");
+  strncpy(target, se.target, MAXPATH);
+  if(writei(ip, 0, (uint64)&se, 0, sizeof(se)) != sizeof(se))
+    panic("sys_symlink write");
+  iupdate(ip);
+  iunlockput(ip);
+  end_op();
   return 0;
 }
