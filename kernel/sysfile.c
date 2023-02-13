@@ -522,7 +522,6 @@ sys_symlink(void)
     end_op();
     return -1;
   }
-  ilock(ip);
   // Write symlink entry into the inode
   struct syment se;
   if(readi(ip, 0, (uint64)&se, 0, sizeof(se)) != sizeof(se))
