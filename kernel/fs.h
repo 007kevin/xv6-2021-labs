@@ -54,6 +54,9 @@ struct dinode {
 // Directory is a file containing a sequence of dirent structures.
 #define DIRSIZ 14
 
+// Threshold for approximating cycles in symbolic links
+#define SYMLINK_THRESHOLD 10
+
 struct dirent {
   ushort inum;
   char name[DIRSIZ];

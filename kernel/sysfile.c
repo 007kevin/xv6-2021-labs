@@ -308,11 +308,41 @@ sys_open(void)
       end_op();
       return -1;
     }
-    ilock(ip);
-    if(ip->type == T_DIR && omode != O_RDONLY){
-      iunlockput(ip);
-      end_op();
-      return -1;
+
+    int i = 0;
+    while(1){
+      ilock(ip);
+
+      if(i == SYMLINK_THRESHOLD){
+        iunlockput(ip);
+        end_op();
+        return -1;
+      }
+
+      if(ip->type == T_DIR && omode != O_RDONLY){
+        iunlockput(ip);
+        end_op();
+        return -1;
+      }
+
+      if(ip->type == T_SYMLINK){
+        if(omode & O_NOFOLLOW)
+          break;
+        struct inode *next;
+        struct syment se;
+        if(readi(ip, 0, (uint64)&se, 0, sizeof(se)) != sizeof(se))
+          panic("sys_open readi");
+        if((next = namei(se.target)) == 0){
+          iunlockput(ip);
+          end_op();
+          return -1;
+        }
+        iunlockput(ip);
+        ip=next;
+        i++;
+        continue;
+      }
+      break;
     }
   }
 
@@ -502,7 +532,7 @@ sys_symlink(void)
     return -1;
   }
   // Write symlink entry into the inode
-  strncpy(target, se.target, MAXPATH);
+  strncpy(se.target, target, MAXPATH);
   if(writei(ip, 0, (uint64)&se, 0, sizeof(se)) != sizeof(se))
     panic("sys_symlink write");
   iupdate(ip);
