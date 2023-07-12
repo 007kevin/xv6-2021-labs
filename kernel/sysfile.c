@@ -484,3 +484,31 @@ sys_pipe(void)
   }
   return 0;
 }
+
+uint64
+sys_mmap(void)
+{
+  // uint64 addr = 0; // for this lab always 0
+  int len;
+  int prot; // either PROT_READ, PROT_WRITE, or both
+  int flags; // MAP_SHARED or MAP_PRIVATE
+  struct file *f;
+  // int offset = 0; // for this lab always 0
+
+  if(argint(1, &len) < 0)
+    return -1;
+  if(argint(2, &prot) < 0)
+    return -1;
+  if(argint(3, &flags) < 0)
+    return -1;
+  if(argfd(4, 0, &f))
+    return -1;
+
+  return 0;
+}
+
+uint64
+sys_munmap(void)
+{
+  return 0;
+}
