@@ -1,0 +1,9 @@
+
+* Notes
+- VM Implementation
+  - Address spaces consists of VMAs and page tables
+    - VMA (virtual memory area)
+        - contiguous range of virtual addresses
+        - same permissions
+        - backed by the same object (file, anonymous memory)
+    - VMA helps the kernel to decide how to handle page faults

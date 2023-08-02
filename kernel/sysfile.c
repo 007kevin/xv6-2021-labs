@@ -504,6 +504,26 @@ sys_mmap(void)
   if(argfd(4, 0, &f))
     return -1;
 
+  struct proc *p;
+  if ((p = myproc()) < 0)
+    panic("sys_mmap: myproc");
+
+  struct vma *v = 0;
+  for(int i = 0; i < NOVMA; ++i)
+    if(p->vmas[0].addr == 0)
+      v = &p->vmas[0];
+  if (!v)
+    panic("sys_mmap: v");
+
+  v->prot = prot;
+  v->flags = flags;
+
+  v->addr = p->sz;
+  v->len = len;
+  p->sz += len;
+
+  v->f = filedup(f);
+
   return 0;
 }
 

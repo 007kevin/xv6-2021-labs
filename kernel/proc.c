@@ -141,6 +141,9 @@ found:
   p->context.ra = (uint64)forkret;
   p->context.sp = p->kstack + PGSIZE;
 
+  // Zero out the vmas
+  memset(&p->vmas, 0, sizeof(p->vmas));
+
   return p;
 }
 
