@@ -47,12 +47,20 @@ void
 procinit(void)
 {
   struct proc *p;
+  struct vma *v;
   
   initlock(&pid_lock, "nextpid");
   initlock(&wait_lock, "wait_lock");
   for(p = proc; p < &proc[NPROC]; p++) {
       initlock(&p->lock, "proc");
       p->kstack = KSTACK((int) (p - proc));
+
+      // TODO(kevink) - revisit this logic. I'm pretty sure it is wrong
+      //                because we are mapping the samekernal area (VMEND)
+      //                to each of the NPROC processes.
+      for(v = p->vmas; v < &p->vmas[NOVMA]; v++){
+        v->addr = VMAREA((int) (v - (p->vmas)));
+      }
   }
 }
 
@@ -191,10 +199,10 @@ proc_pagetable(struct proc *p)
     return 0;
   }
 
-  // map the trapframe just below TRAMPOLINE, for trampoline.S.
+  // map the trapframe just below VMAREA, for trampoline.S.
   if(mappages(pagetable, TRAPFRAME, PGSIZE,
               (uint64)(p->trapframe), PTE_R | PTE_W) < 0){
-    uvmunmap(pagetable, TRAMPOLINE, 1, 0);
+    uvmunmap(pagetable, VMEND, 1, 0);
     uvmfree(pagetable, 0);
     return 0;
   }

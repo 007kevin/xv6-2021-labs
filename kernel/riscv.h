@@ -335,6 +335,9 @@ sfence_vma()
 #define PGSIZE 4096 // bytes per page
 #define PGSHIFT 12  // bits of offset within a page
 
+#define VMSIZE 1024 * PGSIZE // bytes per virtual memory area
+#define VMLEN 16 // lab says 16 VMAs are sufficient
+
 #define PGROUNDUP(sz)  (((sz)+PGSIZE-1) & ~(PGSIZE-1))
 #define PGROUNDDOWN(a) (((a)) & ~(PGSIZE-1))
 

@@ -51,9 +51,13 @@
 // in both user and kernel space.
 #define TRAMPOLINE (MAXVA - PGSIZE)
 
+// map the virtual memory area beneath the trampoline.
+#define VMEND (TRAMPOLINE - (VMLEN * VMSIZE))
+#define VMAREA(p) (TRAMPOLINE - ((p) + 1) * VMSIZE)
+
 // map kernel stacks beneath the trampoline,
 // each surrounded by invalid guard pages.
-#define KSTACK(p) (TRAMPOLINE - ((p)+1)* 2*PGSIZE)
+#define KSTACK(p) (VMEND - ((p)+1)* 2*PGSIZE)
 
 // User memory layout.
 // Address zero first:
@@ -64,4 +68,4 @@
 //   ...
 //   TRAPFRAME (p->trapframe, used by the trampoline)
 //   TRAMPOLINE (the same page as in the kernel)
-#define TRAPFRAME (TRAMPOLINE - PGSIZE)
+#define TRAPFRAME (VMEND - PGSIZE)
