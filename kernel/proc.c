@@ -56,7 +56,7 @@ procinit(void)
       p->kstack = KSTACK((int) (p - proc));
 
       // Each process has a dedicated virual memory areas
-      for(v = p->vmas; v < &p->vmas[NOVMA]; v++){
+      for(v = p->vmas; v < &p->vmas[VMLEN]; v++){
         v->addr = VMAREA((int) (p - proc), (int) (v - (p->vmas)));
       }
   }
