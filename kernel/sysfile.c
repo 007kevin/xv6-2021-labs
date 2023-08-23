@@ -510,7 +510,7 @@ sys_mmap(void)
 
   struct vma *v = 0;
   for(int i = 0; i < VMLEN; ++i)
-    if(p->vmas[0].addr == 0)
+    if(p->vmas[0].len == 0)
       v = &p->vmas[0];
   if (!v)
     panic("sys_mmap: v");

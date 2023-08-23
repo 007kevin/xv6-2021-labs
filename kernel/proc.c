@@ -147,8 +147,8 @@ found:
   p->context.ra = (uint64)forkret;
   p->context.sp = p->kstack + PGSIZE;
 
-  // Zero out the vmas
-  memset(&p->vmas, 0, sizeof(p->vmas));
+  for(int i = 0; i < VMLEN; ++i)
+    p->vmas[i].len = 0; // zero indicates the vma is not being used.
 
   return p;
 }
