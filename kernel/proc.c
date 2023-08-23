@@ -55,11 +55,9 @@ procinit(void)
       initlock(&p->lock, "proc");
       p->kstack = KSTACK((int) (p - proc));
 
-      // TODO(kevink) - revisit this logic. I'm pretty sure it is wrong
-      //                because we are mapping the samekernal area (VMEND)
-      //                to each of the NPROC processes.
+      // Each process has a dedicated virual memory areas
       for(v = p->vmas; v < &p->vmas[NOVMA]; v++){
-        v->addr = VMAREA((int) (v - (p->vmas)));
+        v->addr = VMAREA((int) (p - proc), (int) (v - (p->vmas)));
       }
   }
 }

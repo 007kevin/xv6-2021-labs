@@ -52,10 +52,10 @@
 #define TRAMPOLINE (MAXVA - PGSIZE)
 
 // map the virtual memory area beneath the trampoline.
-#define VMEND (TRAMPOLINE - (VMLEN * VMSIZE))
-#define VMAREA(p) (TRAMPOLINE - ((p) + 1) * VMSIZE)
+#define VMEND (TRAMPOLINE - (NPROC * VMLEN * VMSIZE))
+#define VMAREA(p, v) (TRAMPOLINE - ((p) * VMLEN * VMSIZE) - ((v) + 1) * VMSIZE)
 
-// map kernel stacks beneath the trampoline,
+// map kernel stacks beneath the vmarea,
 // each surrounded by invalid guard pages.
 #define KSTACK(p) (VMEND - ((p)+1)* 2*PGSIZE)
 
