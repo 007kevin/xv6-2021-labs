@@ -65,6 +65,18 @@ usertrap(void)
     intr_on();
 
     syscall();
+  }
+  else if(r_scause() == 15 || r_scause() == 13) {
+    // See xv6 book:
+    // Chapter 3.2 Kernel Address Space
+    // Chatper 4.6 Page-fault exceptions
+    // scause 12 = instruction page fault
+    // scause 13 = load page fault
+    // scause 15 = store page fault
+    printf("hello!: unexpected scause %p pid=%d\n", r_scause(), p->pid);
+    printf("            sepc=%p stval=%p\n", r_sepc(), r_stval());
+    p->killed = 1;
+
   } else if((which_dev = devintr()) != 0){
     // ok
   } else {

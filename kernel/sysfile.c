@@ -488,6 +488,8 @@ sys_pipe(void)
 uint64
 sys_mmap(void)
 {
+  uint64 FAIL = 0xffffffffffffffff;
+
   // uint64 addr = 0; // for this lab always 0
   int len;
   int prot; // either PROT_READ, PROT_WRITE, or both
@@ -496,13 +498,13 @@ sys_mmap(void)
   // int offset = 0; // for this lab always 0
 
   if(argint(1, &len) < 0)
-    return -1;
+    return FAIL;
   if(argint(2, &prot) < 0)
-    return -1;
+    return FAIL;
   if(argint(3, &flags) < 0)
-    return -1;
+    return FAIL;
   if(argfd(4, 0, &f))
-    return -1;
+    return FAIL;
 
   struct proc *p;
   if ((p = myproc()) < 0)
@@ -518,13 +520,12 @@ sys_mmap(void)
   v->prot = prot;
   v->flags = flags;
 
-  v->addr = p->sz;
   v->len = len;
   p->sz += len;
 
   v->f = filedup(f);
 
-  return 0;
+  return v->addr;
 }
 
 uint64
