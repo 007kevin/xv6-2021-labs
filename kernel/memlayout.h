@@ -51,7 +51,12 @@
 // in both user and kernel space.
 #define TRAMPOLINE (MAXVA - PGSIZE)
 
+
 // map the virtual memory area beneath the trampoline.
+
+// TODO(kevin) - we should use vm 'pagetable's instead of fixed size, since one
+//               of the requirements:
+//                 mmap of a file larger than physical memory is possible
 #define VMEND (TRAMPOLINE - (NPROC * VMLEN * VMSIZE))
 #define VMAREA(p, v) (TRAMPOLINE - ((p) * VMLEN * VMSIZE) - ((v) + 1) * VMSIZE)
 

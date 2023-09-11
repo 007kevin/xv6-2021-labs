@@ -73,6 +73,8 @@ usertrap(void)
     // scause 12 = instruction page fault
     // scause 13 = load page fault
     // scause 15 = store page fault
+    /* uint64 va = r_stval(); */
+
     printf("hello!: unexpected scause %p pid=%d\n", r_scause(), p->pid);
     printf("            sepc=%p stval=%p\n", r_sepc(), r_stval());
     p->killed = 1;
