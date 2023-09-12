@@ -512,8 +512,11 @@ sys_mmap(void)
 
   struct vma *v = 0;
   for(int i = 0; i < VMLEN; ++i)
-    if(p->vmas[0].len == 0)
-      v = &p->vmas[0];
+    if(p->vmas[i].len == 0){
+      printf("DEBUG vidx init: %d\n", i);
+      v = &p->vmas[i];
+      break;
+    }
   if (!v)
     panic("sys_mmap: v");
 
@@ -525,11 +528,18 @@ sys_mmap(void)
 
   v->f = filedup(f);
 
-  return v->addr;
+  // Allocate empty vma page table
+  v->pagetable = uvmcreate();
+
+  // return the address of the vma as a 'reference point' so we can identify the vma during usertrap via vmaindex.
+  printf("DEBUG mmap pointer: %p\n", (uint64) v);
+  return (uint64) v;
 }
 
 uint64
 sys_munmap(void)
 {
+  // remember to set len to 0 and free the pagetable
+
   return 0;
 }

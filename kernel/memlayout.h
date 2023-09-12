@@ -51,18 +51,9 @@
 // in both user and kernel space.
 #define TRAMPOLINE (MAXVA - PGSIZE)
 
-
-// map the virtual memory area beneath the trampoline.
-
-// TODO(kevin) - we should use vm 'pagetable's instead of fixed size, since one
-//               of the requirements:
-//                 mmap of a file larger than physical memory is possible
-#define VMEND (TRAMPOLINE - (NPROC * VMLEN * VMSIZE))
-#define VMAREA(p, v) (TRAMPOLINE - ((p) * VMLEN * VMSIZE) - ((v) + 1) * VMSIZE)
-
-// map kernel stacks beneath the vmarea,
+// map kernel stacks beneath the trampoline,
 // each surrounded by invalid guard pages.
-#define KSTACK(p) (VMEND - ((p)+1)* 2*PGSIZE)
+#define KSTACK(p) (TRAMPOLINE - ((p)+1)* 2*PGSIZE)
 
 // User memory layout.
 // Address zero first:
@@ -73,4 +64,4 @@
 //   ...
 //   TRAPFRAME (p->trapframe, used by the trampoline)
 //   TRAMPOLINE (the same page as in the kernel)
-#define TRAPFRAME (VMEND - PGSIZE)
+#define TRAPFRAME (TRAMPOLINE - PGSIZE)

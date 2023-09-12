@@ -5,6 +5,8 @@
 #include "riscv.h"
 #include "defs.h"
 #include "fs.h"
+#include "spinlock.h"
+#include "proc.h"
 
 /*
  * the kernel's page table.
@@ -431,4 +433,18 @@ copyinstr(pagetable_t pagetable, char *dst, uint64 srcva, uint64 max)
   } else {
     return -1;
   }
+}
+
+// Given the virtual memory area address, return the index of the process's vma else -1
+int
+vmaindex(uint64 va)
+{
+  struct proc *p = myproc();
+  struct vma *v;
+  for(int i = 0; i < VMLEN; ++i){
+    v = &p->vmas[i];
+    if (v->len != 0 && va - ((uint64) v) >= 0 && va < ((uint64) v) + v->len)
+      return i;
+  }
+  return -1;
 }

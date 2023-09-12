@@ -73,22 +73,26 @@ usertrap(void)
     // scause 12 = instruction page fault
     // scause 13 = load page fault
     // scause 15 = store page fault
-    /* uint64 va = r_stval(); */
+    uint64 va = r_stval();
 
-    printf("hello!: unexpected scause %p pid=%d\n", r_scause(), p->pid);
-    printf("            sepc=%p stval=%p\n", r_sepc(), r_stval());
-    p->killed = 1;
-
+    // mmap use-case
+    int vidx = vmaindex(va);
+    if (vidx >= 0) {
+      printf("DEBUG vidx=%d\n", vidx);
+    } else {
+      p->killed = 1;
+    }
   } else if((which_dev = devintr()) != 0){
     // ok
   } else {
-    printf("usertrap(): unexpected scause %p pid=%d\n", r_scause(), p->pid);
-    printf("            sepc=%p stval=%p\n", r_sepc(), r_stval());
     p->killed = 1;
   }
 
-  if(p->killed)
+  if(p->killed){
+    printf("usertrap(): unexpected scause %p pid=%d\n", r_scause(), p->pid);
+    printf("            sepc=%p stval=%p\n", r_sepc(), r_stval());
     exit(-1);
+  }
 
   // give up the CPU if this is a timer interrupt.
   if(which_dev == 2)
