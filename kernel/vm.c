@@ -6,6 +6,8 @@
 #include "defs.h"
 #include "fs.h"
 #include "spinlock.h"
+#include "sleeplock.h"
+#include "file.h"
 #include "proc.h"
 
 /*
@@ -439,12 +441,50 @@ copyinstr(pagetable_t pagetable, char *dst, uint64 srcva, uint64 max)
 int
 vmaindex(uint64 va)
 {
-  struct proc *p = myproc();
-  struct vma *v;
-  for(int i = 0; i < VMLEN; ++i){
-    v = &p->vmas[i];
-    if (v->len != 0 && va - ((uint64) v) >= 0 && va < ((uint64) v) + v->len)
-      return i;
+  if (va < VMAREA || va >= TRAPFRAME){
+    return -1;
   }
-  return -1;
+  return (va-VMAREA)/(VMSIZE * PGSIZE);
+}
+
+int
+vmaread(pagetable_t pagetable, struct vma *v, uint64 va)
+{
+  va = PGROUNDDOWN(va);
+  uint64 mem;
+  if((mem = (uint64) kalloc()) == 0)
+    panic("vmaread: kalloc");
+  printf("DEBUG mem value %d\n", PA2PTE(mem) | PTE_V | v->flags);
+  if(mappages(pagetable, va, PGSIZE, mem, v->flags) != 0){
+    kfree((void *) mem);
+    panic("uvmcow: mappages");
+  }
+  pte_t *pte;
+  if((pte = walk(pagetable, va, 0)) == 0)
+    panic("vmaread: pte should exist");
+  printf("DEBUG pte value %d\n", *pte);
+
+  return 0;
+
+  /* struct file *f = v->f; */
+  /* va = PGROUNDDOWN(va); */
+  /* uint64 mem; */
+  /* if((mem = (uint64) kalloc()) == 0) */
+  /*   panic("vmaread: kalloc"); */
+  /* int r = 0; */
+  /* ilock(f->ip); */
+  /* r = readi(f->ip, 0, mem, va - v->addr, PGSIZE); */
+  /* iunlock(f->ip); */
+  /* printf("DEBUG mem=%p, off=%d\n", mem, va - v->addr); */
+  /* if(mappages(pagetable, va, PGSIZE, (uint64)mem, v->flags) != 0){ */
+  /*   kfree((void *) mem); */
+  /*   panic("uvmcow: mappages"); */
+  /* } */
+  /* printf("DEBUG read %d for %p\n", r, va); */
+
+  /* // DEBUG: Assert va got mapped */
+  /* pte_t *pte; */
+  /* if((pte = walk(pagetable, va, 0)) == 0) */
+  /*   panic("vmaread: pte should exist"); */
+  /* return 0; */
 }

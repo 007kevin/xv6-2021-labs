@@ -528,12 +528,9 @@ sys_mmap(void)
 
   v->f = filedup(f);
 
-  // Allocate empty vma page table
-  v->pagetable = uvmcreate();
-
   // return the address of the vma as a 'reference point' so we can identify the vma during usertrap via vmaindex.
-  printf("DEBUG mmap pointer: %p\n", (uint64) v);
-  return (uint64) v;
+  printf("DEBUG mmap pointer: %p\n", (uint64) v->addr);
+  return v->addr;
 }
 
 uint64

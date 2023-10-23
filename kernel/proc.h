@@ -84,9 +84,7 @@ enum procstate { UNUSED, USED, SLEEPING, RUNNABLE, RUNNING, ZOMBIE };
 
 // Per-process VMA
 struct vma {
-   // each vma points to its own page table. used as a datastructure
-   // to hold memory mapped files rather than an actual cpu page table.
-  pagetable_t pagetable;
+  uint64 addr;
   int len;
   int prot;
   int flags;

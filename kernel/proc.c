@@ -156,10 +156,7 @@ freeproc(struct proc *p)
   if(p->pagetable)
     proc_freepagetable(p->pagetable, p->sz);
 
-  struct vma *v;
-  for(v = p->vmas; v < &p->vmas[VMLEN]; v++)
-    if (v->pagetable)
-      uvmfree(v->pagetable, v->len);
+  // TODO: free vmas
 
   p->pagetable = 0;
   p->sz = 0;
@@ -202,8 +199,11 @@ proc_pagetable(struct proc *p)
     return 0;
   }
 
-  // TODO(kevink)
-  // Allocate VMAREA space under TRAPFRAME and use that instead.
+  for(uint64 i = 0; i < VMLEN; i++){
+    p->vmas[i].addr = VMAREA + (i*VMSIZE);
+  }
+
+  // TODO:Allocate VMAREA space under TRAPFRAME and use that instead.
 
   return pagetable;
 }

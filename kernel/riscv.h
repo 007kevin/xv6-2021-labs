@@ -336,6 +336,7 @@ sfence_vma()
 #define PGSHIFT 12  // bits of offset within a page
 
 #define VMLEN 16 // lab says 16 VMAs are sufficient
+#define VMSIZE 32
 
 #define PGROUNDUP(sz)  (((sz)+PGSIZE-1) & ~(PGSIZE-1))
 #define PGROUNDDOWN(a) (((a)) & ~(PGSIZE-1))

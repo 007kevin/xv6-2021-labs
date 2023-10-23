@@ -73,13 +73,12 @@ usertrap(void)
     // scause 12 = instruction page fault
     // scause 13 = load page fault
     // scause 15 = store page fault
-    uint64 va = r_stval();
 
+    uint64 va = r_stval();
+    printf("DEBUG va=%p, scause=%d\n", va, r_scause());
     // mmap use-case
     int vidx = vmaindex(va);
-    if (vidx >= 0) {
-      printf("DEBUG vidx=%d\n", vidx);
-    } else {
+    if (vidx < 0 || vmaread(p->pagetable, &p->vmas[vidx], va) != 0) {
       p->killed = 1;
     }
   } else if((which_dev = devintr()) != 0){
