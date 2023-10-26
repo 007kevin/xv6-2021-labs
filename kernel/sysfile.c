@@ -521,6 +521,17 @@ sys_mmap(void)
   if(argfd(4, 0, &f))
     return FAIL;
 
+  // don't allow write mapping of a file opened read only
+  if((prot & PROT_WRITE) && !f->writable){
+    printf("DEBUG1 prot=%d, readable=%d, writable=%d\n", prot, f->readable, f->writable);
+    return FAIL;
+  }
+  // don't allow read mapping of a file opened write only
+  if((prot & PROT_READ) && !f->readable){
+    printf("DEBUG2 prot=%d, readable=%d, writable=%d\n", prot, f->readable, f->writable);
+    return FAIL;
+  }
+
   struct proc *p;
   if ((p = myproc()) < 0)
     panic("sys_mmap: myproc");
