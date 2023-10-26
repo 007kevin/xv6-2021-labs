@@ -450,41 +450,21 @@ vmaindex(uint64 va)
 int
 vmaread(pagetable_t pagetable, struct vma *v, uint64 va)
 {
+  struct file *f = v->f;
   va = PGROUNDDOWN(va);
+
   uint64 mem;
   if((mem = (uint64) kalloc()) == 0)
     panic("vmaread: kalloc");
-  printf("DEBUG mem value %d\n", PA2PTE(mem) | PTE_V | v->flags);
-  if(mappages(pagetable, va, PGSIZE, mem, v->flags) != 0){
+  memset((void *)mem, 0, PGSIZE);    // fill with zeros in case not all of the file's page is read in (e.g EOF)
+
+  ilock(f->ip);
+  readi(f->ip, 0, mem, (va - v->addr)/PGSIZE * PGSIZE, PGSIZE);
+  iunlock(f->ip);
+
+  if(mappages(pagetable, va, PGSIZE, (uint64)mem, v->flags | PTE_U) != 0){
     kfree((void *) mem);
     panic("uvmcow: mappages");
   }
-  pte_t *pte;
-  if((pte = walk(pagetable, va, 0)) == 0)
-    panic("vmaread: pte should exist");
-  printf("DEBUG pte value %d\n", *pte);
-
   return 0;
-
-  /* struct file *f = v->f; */
-  /* va = PGROUNDDOWN(va); */
-  /* uint64 mem; */
-  /* if((mem = (uint64) kalloc()) == 0) */
-  /*   panic("vmaread: kalloc"); */
-  /* int r = 0; */
-  /* ilock(f->ip); */
-  /* r = readi(f->ip, 0, mem, va - v->addr, PGSIZE); */
-  /* iunlock(f->ip); */
-  /* printf("DEBUG mem=%p, off=%d\n", mem, va - v->addr); */
-  /* if(mappages(pagetable, va, PGSIZE, (uint64)mem, v->flags) != 0){ */
-  /*   kfree((void *) mem); */
-  /*   panic("uvmcow: mappages"); */
-  /* } */
-  /* printf("DEBUG read %d for %p\n", r, va); */
-
-  /* // DEBUG: Assert va got mapped */
-  /* pte_t *pte; */
-  /* if((pte = walk(pagetable, va, 0)) == 0) */
-  /*   panic("vmaread: pte should exist"); */
-  /* return 0; */
 }

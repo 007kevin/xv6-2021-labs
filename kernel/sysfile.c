@@ -513,7 +513,6 @@ sys_mmap(void)
   struct vma *v = 0;
   for(int i = 0; i < VMLEN; ++i)
     if(p->vmas[i].len == 0){
-      printf("DEBUG vidx init: %d\n", i);
       v = &p->vmas[i];
       break;
     }
@@ -528,8 +527,6 @@ sys_mmap(void)
 
   v->f = filedup(f);
 
-  // return the address of the vma as a 'reference point' so we can identify the vma during usertrap via vmaindex.
-  printf("DEBUG mmap pointer: %p\n", (uint64) v->addr);
   return v->addr;
 }
 

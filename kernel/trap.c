@@ -75,7 +75,6 @@ usertrap(void)
     // scause 15 = store page fault
 
     uint64 va = r_stval();
-    printf("DEBUG va=%p, scause=%d\n", va, r_scause());
     // mmap use-case
     int vidx = vmaindex(va);
     if (vidx < 0 || vmaread(p->pagetable, &p->vmas[vidx], va) != 0) {
