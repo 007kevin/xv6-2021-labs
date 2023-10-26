@@ -203,8 +203,6 @@ proc_pagetable(struct proc *p)
     p->vmas[i].addr = VMAREA + (i*VMSIZE);
   }
 
-  // TODO:Allocate VMAREA space under TRAPFRAME and use that instead.
-
   return pagetable;
 }
 

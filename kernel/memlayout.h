@@ -67,4 +67,4 @@
 //   TRAPFRAME (p->trapframe, used by the trampoline)
 //   TRAMPOLINE (the same page as in the kernel)
 //   VMAREA
-#define VMAREA (TRAPFRAME - (VMSIZE * PGSIZE * VMLEN))
+#define VMAREA (TRAPFRAME - (VMSIZE * VMLEN))

@@ -444,7 +444,7 @@ vmaindex(uint64 va)
   if (va < VMAREA || va >= TRAPFRAME){
     return -1;
   }
-  return (va-VMAREA)/(VMSIZE * PGSIZE);
+  return (va-VMAREA)/VMSIZE;
 }
 
 int

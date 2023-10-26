@@ -533,7 +533,7 @@ sys_mmap(void)
 uint64
 sys_munmap(void)
 {
-  // remember to set len to 0 and free the pagetable
+
 
   return 0;
 }
