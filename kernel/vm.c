@@ -1,4 +1,5 @@
 #include "param.h"
+#include "kernel/fcntl.h"
 #include "types.h"
 #include "memlayout.h"
 #include "elf.h"
@@ -462,7 +463,16 @@ vmaread(pagetable_t pagetable, struct vma *v, uint64 va)
   readi(f->ip, 0, mem, (va - v->addr)/PGSIZE * PGSIZE, PGSIZE);
   iunlock(f->ip);
 
-  if(mappages(pagetable, va, PGSIZE, (uint64)mem, v->flags | PTE_U) != 0){
+  // need to map prot to pte permissions
+  int perm = 0;
+  if (v->prot & PROT_READ)
+    perm |= PTE_R;
+  if (v->prot & PROT_WRITE)
+    perm |= PTE_W;
+  if (v->prot & PROT_EXEC)
+    perm |= PTE_X;
+
+  if(mappages(pagetable, va, PGSIZE, (uint64)mem, perm | PTE_U) != 0){
     kfree((void *) mem);
     panic("uvmcow: mappages");
   }

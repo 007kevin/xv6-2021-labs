@@ -498,8 +498,7 @@ sys_pipe(void)
 // descriptor of the file to map. You can assume offset is zero (it's the starting
 // point in the file at which to map).
 //
-// It's OK if processes that map the same MAP_SHARED file do not share physical
-pages.
+// It's OK if processes that map the same MAP_SHARED file do not share physical pages.
 
 uint64
 sys_mmap(void)
@@ -555,6 +554,26 @@ sys_mmap(void)
 uint64
 sys_munmap(void)
 {
+  uint64 addr;
+  int len;
+
+  if(argaddr(0, &addr) < 0)
+    return -1;
+  if(argint(0, &len) < 0)
+    return -1;
+
+  int vidx = vmaindex(addr);
+  if (vidx < 0) {
+    printf("sys_munmap: invalid addr %p\n", addr);
+    return -1;
+  }
+
+  /* struct proc *p; */
+  /* struct vma *v; */
+  /* if ((p = myproc()) < 0) */
+  /*   panic("sys_munmap: myproc"); */
+  /* v = &p->vmas[vidx]; */
+  /* if (v->prot) */
 
 
   return 0;
