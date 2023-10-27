@@ -521,14 +521,8 @@ sys_mmap(void)
   if(argfd(4, 0, &f))
     return FAIL;
 
-  // don't allow write mapping of a file opened read only
-  if((prot & PROT_WRITE) && !f->writable){
-    printf("DEBUG1 prot=%d, readable=%d, writable=%d\n", prot, f->readable, f->writable);
-    return FAIL;
-  }
-  // don't allow read mapping of a file opened write only
-  if((prot & PROT_READ) && !f->readable){
-    printf("DEBUG2 prot=%d, readable=%d, writable=%d\n", prot, f->readable, f->writable);
+  // files opened read only with shared writable is not allowed
+  if (f->readable && !f->writable && (prot & PROT_WRITE) && (flags & MAP_SHARED)){
     return FAIL;
   }
 
