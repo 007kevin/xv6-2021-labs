@@ -543,7 +543,6 @@ sys_mmap(void)
   v->flags = flags;
 
   v->len = len;
-  p->sz += len;
 
   v->f = filedup(f);
 
@@ -564,7 +563,7 @@ sys_munmap(void)
 
   if(argaddr(0, &addr) < 0)
     return -1;
-  if(argint(0, &len) < 0)
+  if(argint(1, &len) < 0)
     return -1;
 
   int vidx = vmaindex(addr);
@@ -578,7 +577,7 @@ sys_munmap(void)
   if ((p = myproc()) < 0)
     panic("sys_munmap: myproc");
   v = &p->vmas[vidx];
-  vmaunmap(p->pagetable, v);
+  vmaunmap(p->pagetable, v, len);
 
   return 0;
 }

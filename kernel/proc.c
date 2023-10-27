@@ -156,7 +156,14 @@ freeproc(struct proc *p)
   if(p->pagetable)
     proc_freepagetable(p->pagetable, p->sz);
 
-  // TODO: free vmas
+  struct vma *v;
+  for(int i = 0; i < VMLEN; ++i){
+    v = &p->vmas[i];
+    if (v->len){
+      vmaunmap(p->pagetable, v, v->len);
+      v->len=0;
+    }
+  }
 
   p->pagetable = 0;
   p->sz = 0;

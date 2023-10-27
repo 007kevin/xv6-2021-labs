@@ -194,7 +194,7 @@ uvmunmap(pagetable_t pagetable, uint64 va, uint64 npages, int do_free)
 // Similar to uvmunmap but caters to the virtual memory area (i.e mapping does
 // not have to exist). If MAP_SHARED, will write back to file before freeing.
 void
-vmaunmap(pagetable_t pagetable, struct vma *v){
+vmaunmap(pagetable_t pagetable, struct vma *v, int len){
   uint64 a;
   pte_t *pte;
 
@@ -205,7 +205,7 @@ vmaunmap(pagetable_t pagetable, struct vma *v){
     begin_op();
   }
   
-  for(a = v->addr; a < v->addr + v->len; a += PGSIZE){
+  for(a = v->addr; a < v->addr + len; a += PGSIZE){
     if((pte = walk(pagetable, a, 0)) == 0)
       panic("uvmunmap: walk");
     if((*pte & PTE_V) == 0)
