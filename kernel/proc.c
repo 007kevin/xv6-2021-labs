@@ -303,6 +303,9 @@ fork(void)
   }
   np->sz = p->sz;
 
+  // TODO: copy process vmas to child and copy VMAREA. Don't forget to increase file reference
+  //       (via filedup)
+
   // copy saved user registers.
   *(np->trapframe) = *(p->trapframe);
 
