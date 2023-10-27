@@ -191,6 +191,53 @@ uvmunmap(pagetable_t pagetable, uint64 va, uint64 npages, int do_free)
   }
 }
 
+// Similar to uvmunmap but caters to the virtual memory area (i.e mapping does
+// not have to exist). If MAP_SHARED, will write back to file before freeing.
+void
+vmaunmap(pagetable_t pagetable, struct vma *v){
+  uint64 a;
+  pte_t *pte;
+
+  if((v->addr % PGSIZE) != 0)
+    panic("vmaunmap: not aligned");
+
+  if(v->flags & MAP_SHARED){
+    begin_op();
+  }
+  
+  for(a = v->addr; a < v->addr + v->len; a += PGSIZE){
+    if((pte = walk(pagetable, a, 0)) == 0)
+      panic("uvmunmap: walk");
+    if((*pte & PTE_V) == 0)
+      continue; // skip unmapped pages
+    if(PTE_FLAGS(*pte) == PTE_V)
+      continue; // skip, not a leaf
+
+    uint64 pa = PTE2PA(*pte);
+
+    // write back to file
+    if(v->flags & MAP_SHARED){
+      struct file *f = v->f;
+      ilock(f->ip);
+      // TODO: might need to account for EOF
+      writei(f->ip, 0, pa, a-v->addr, PGSIZE);
+      iunlock(f->ip);
+    }
+
+    // free the physical memory
+    kfree((void*)pa);
+
+    // remove mapping from page table
+    *pte = 0;
+  }
+
+  if(v->flags & MAP_SHARED){
+    end_op();
+  }
+
+
+}
+
 // create an empty user page table.
 // returns 0 if out of memory.
 pagetable_t

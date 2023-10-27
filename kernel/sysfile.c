@@ -573,13 +573,12 @@ sys_munmap(void)
     return -1;
   }
 
-  /* struct proc *p; */
-  /* struct vma *v; */
-  /* if ((p = myproc()) < 0) */
-  /*   panic("sys_munmap: myproc"); */
-  /* v = &p->vmas[vidx]; */
-  /* if (v->prot) */
-
+  struct proc *p;
+  struct vma *v;
+  if ((p = myproc()) < 0)
+    panic("sys_munmap: myproc");
+  v = &p->vmas[vidx];
+  vmaunmap(p->pagetable, v);
 
   return 0;
 }
