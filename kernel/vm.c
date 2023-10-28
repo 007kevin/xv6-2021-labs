@@ -194,18 +194,18 @@ uvmunmap(pagetable_t pagetable, uint64 va, uint64 npages, int do_free)
 // Similar to uvmunmap but caters to the virtual memory area (i.e mapping does
 // not have to exist). If MAP_SHARED, will write back to file before freeing.
 void
-vmaunmap(pagetable_t pagetable, struct vma *v, int len){
+vmaunmap(pagetable_t pagetable, struct vma *v, uint64 addr, int len){
   uint64 a;
   pte_t *pte;
 
-  if((v->addr % PGSIZE) != 0)
+  if((addr % PGSIZE) != 0)
     panic("vmaunmap: not aligned");
 
   if(v->flags & MAP_SHARED){
     begin_op();
   }
   
-  for(a = v->addr; a < v->addr + len; a += PGSIZE){
+  for(a = addr; a < PGROUNDUP(addr + len); a += PGSIZE){
     if((pte = walk(pagetable, a, 0)) == 0)
       panic("uvmunmap: walk");
     if((*pte & PTE_V) == 0)
@@ -220,7 +220,7 @@ vmaunmap(pagetable_t pagetable, struct vma *v, int len){
       struct file *f = v->f;
       ilock(f->ip);
       // TODO: might need to account for EOF
-      writei(f->ip, 0, pa, a-v->addr, PGSIZE);
+      writei(f->ip, 0, pa, a-addr, PGSIZE);
       iunlock(f->ip);
     }
 
@@ -235,6 +235,20 @@ vmaunmap(pagetable_t pagetable, struct vma *v, int len){
     end_op();
   }
 
+  // If munmap removes all pages of a previous mmap, it should
+  // decrement the reference count of the corresponding struct file
+  v->pcnt -= PGROUNDUP(len)/PGSIZE;
+  if (v->pcnt < 0){
+    panic("vmaunmap: unmapped more than once");
+  }
+  if (v->pcnt == 0){
+    v->len = 0;
+    v->prot =0;
+    v->flags =0;
+    v->pcnt = 0;
+    fileclose(v->f);
+    v->f = 0;
+  }
 
 }
 
@@ -377,6 +391,48 @@ uvmcopy(pagetable_t old, pagetable_t new, uint64 sz)
  err:
   uvmunmap(new, 0, i / PGSIZE, 1);
   return -1;
+}
+
+int
+vmacopy(pagetable_t oldp, struct vma *oldv, pagetable_t newp, struct vma *newv)
+{
+  /* pte_t *pte; */
+  /* uint64 pa, i; */
+  /* uint flags; */
+  /* char *mem; */
+
+  /* for(i = VMAREA; i < VMAREA + (VMSIZE * VMLEN); i += PGSIZE){ */
+  /*   if((pte = walk(oldp, i, 0)) == 0) */
+  /*     continue; */
+  /*   if((*pte & PTE_V) == 0) */
+  /*     continue; // skip unmapped pages */
+  /*   if(PTE_FLAGS(*pte) == PTE_V) */
+  /*     continue; // skip, not a leaf */
+  /*   pa = PTE2PA(*pte); */
+  /*   flags = PTE_FLAGS(*pte); */
+  /*   if((mem = kalloc()) == 0) */
+  /*     goto err; */
+  /*   memmove(mem, (char*) pa, PGSIZE); */
+  /*   if(mappages(newp, i, PGSIZE, (uint64)mem, flags) != 0){ */
+  /*     kfree(mem); */
+  /*     goto err; */
+  /*   } */
+  /* } */
+
+  /* for(i = 0; i < VMLEN; ++i){ */
+  /*   if (newv[i].len > 0){ */
+  /*     newv[i].addr = oldv[i].addr; */
+  /*     newv[i].len = oldv[i].len; */
+  /*     newv[i].prot = oldv[i].prot; */
+  /*     newv[i].flags = oldv[i].flags; */
+  /*     newv[i].f = filedup(oldv[i].f); */
+  /*   } */
+  /* } */
+  return 0;
+
+  /* err: */
+  /* // TODO: handle freeing new pagetable */
+  /* return -1; */
 }
 
 // mark a PTE invalid for user access.

@@ -160,7 +160,7 @@ freeproc(struct proc *p)
   for(int i = 0; i < VMLEN; ++i){
     v = &p->vmas[i];
     if (v->len){
-      vmaunmap(p->pagetable, v, v->len);
+      vmaunmap(p->pagetable, v, v->addr, v->len);
       v->len=0;
     }
   }
@@ -305,6 +305,11 @@ fork(void)
 
   // TODO: copy process vmas to child and copy VMAREA. Don't forget to increase file reference
   //       (via filedup)
+  if(vmacopy(p->pagetable, p->vmas, np->pagetable, np->vmas) < 0){
+    freeproc(np);
+    release(&np->lock);
+    return -1;
+  }
 
   // copy saved user registers.
   *(np->trapframe) = *(p->trapframe);
@@ -350,9 +355,11 @@ reparent(struct proc *p)
   }
 }
 
-// Exit the current process.  Does not return.
+// Exit the current process. Does not return.
 // An exited process remains in the zombie state
 // until its parent calls wait().
+// TODO: Modify exit to unmap the process's mapped
+//       regions as if munmap had been called.
 void
 exit(int status)
 {
