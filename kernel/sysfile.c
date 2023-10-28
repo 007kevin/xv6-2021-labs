@@ -539,11 +539,16 @@ sys_mmap(void)
   if (!v)
     panic("sys_mmap: v");
 
+  // indicate these pages are mapped to a file
+  for(uint64 a =  v->addr; a < PGROUNDUP(v->addr+len); a+=PGSIZE){
+    pte_t * pte = walk(p->pagetable, a, 1);
+    *pte = *pte | PTE_M;
+  }
+
   v->prot = prot;
   v->flags = flags;
 
   v->len = len;
-  v->pcnt = PGROUNDUP(len)/PGSIZE;
 
   v->f = filedup(f);
 

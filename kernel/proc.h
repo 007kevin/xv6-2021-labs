@@ -88,7 +88,6 @@ struct vma {
   int len;
   int prot;
   int flags;
-  int pcnt; // cnt of mapped pages to assist vmunmap. assumes vmunmap calls do not overlap.
   struct file *f;
 };
 

@@ -377,6 +377,8 @@ exit(int status)
     }
   }
 
+
+
   begin_op();
   iput(p->cwd);
   end_op();

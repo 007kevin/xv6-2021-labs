@@ -235,21 +235,23 @@ vmaunmap(pagetable_t pagetable, struct vma *v, uint64 addr, int len){
     end_op();
   }
 
-  // If munmap removes all pages of a previous mmap, it should
+  // If munmap removed all pages of a previous mmap, it should
   // decrement the reference count of the corresponding struct file
-  v->pcnt -= PGROUNDUP(len)/PGSIZE;
-  if (v->pcnt < 0){
-    panic("vmaunmap: unmapped more than once");
+  int remove = 1;
+  for(a = v->addr; a < PGROUNDUP(v->addr + v->len); a += PGSIZE){
+    pte_t * pte = walk(pagetable, a, 1);
+    if (*pte & PTE_M){
+      remove = 0;
+      break;
+    }
   }
-  if (v->pcnt == 0){
+  if (remove){
     v->len = 0;
     v->prot =0;
     v->flags =0;
-    v->pcnt = 0;
     fileclose(v->f);
     v->f = 0;
   }
-
 }
 
 // create an empty user page table.
@@ -425,7 +427,6 @@ vmacopy(pagetable_t oldp, struct vma *oldv, pagetable_t newp, struct vma *newv)
       newv[i].len = oldv[i].len;
       newv[i].prot = oldv[i].prot;
       newv[i].flags = oldv[i].flags;
-      newv[i].pcnt = oldv[i].pcnt;
       newv[i].f = filedup(oldv[i].f);
     }
   }
