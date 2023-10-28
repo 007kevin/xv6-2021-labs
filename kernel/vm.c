@@ -396,43 +396,44 @@ uvmcopy(pagetable_t old, pagetable_t new, uint64 sz)
 int
 vmacopy(pagetable_t oldp, struct vma *oldv, pagetable_t newp, struct vma *newv)
 {
-  /* pte_t *pte; */
-  /* uint64 pa, i; */
-  /* uint flags; */
-  /* char *mem; */
+  pte_t *pte;
+  uint64 pa, i;
+  uint flags;
+  char *mem;
 
-  /* for(i = VMAREA; i < VMAREA + (VMSIZE * VMLEN); i += PGSIZE){ */
-  /*   if((pte = walk(oldp, i, 0)) == 0) */
-  /*     continue; */
-  /*   if((*pte & PTE_V) == 0) */
-  /*     continue; // skip unmapped pages */
-  /*   if(PTE_FLAGS(*pte) == PTE_V) */
-  /*     continue; // skip, not a leaf */
-  /*   pa = PTE2PA(*pte); */
-  /*   flags = PTE_FLAGS(*pte); */
-  /*   if((mem = kalloc()) == 0) */
-  /*     goto err; */
-  /*   memmove(mem, (char*) pa, PGSIZE); */
-  /*   if(mappages(newp, i, PGSIZE, (uint64)mem, flags) != 0){ */
-  /*     kfree(mem); */
-  /*     goto err; */
-  /*   } */
-  /* } */
+  for(i = VMAREA; i < VMAREA + (VMSIZE * VMLEN); i += PGSIZE){
+    if((pte = walk(oldp, i, 0)) == 0)
+      continue;
+    if((*pte & PTE_V) == 0)
+      continue; // skip unmapped pages
+    if(PTE_FLAGS(*pte) == PTE_V)
+      continue; // skip, not a leaf
+    pa = PTE2PA(*pte);
+    flags = PTE_FLAGS(*pte);
+    if((mem = kalloc()) == 0)
+      goto err;
+    memmove(mem, (char*) pa, PGSIZE);
+    if(mappages(newp, i, PGSIZE, (uint64)mem, flags) != 0){
+      kfree(mem);
+      goto err;
+    }
+  }
 
-  /* for(i = 0; i < VMLEN; ++i){ */
-  /*   if (newv[i].len > 0){ */
-  /*     newv[i].addr = oldv[i].addr; */
-  /*     newv[i].len = oldv[i].len; */
-  /*     newv[i].prot = oldv[i].prot; */
-  /*     newv[i].flags = oldv[i].flags; */
-  /*     newv[i].f = filedup(oldv[i].f); */
-  /*   } */
-  /* } */
+  for(i = 0; i < VMLEN; ++i){
+    if (oldv[i].len > 0){
+      newv[i].addr = oldv[i].addr;
+      newv[i].len = oldv[i].len;
+      newv[i].prot = oldv[i].prot;
+      newv[i].flags = oldv[i].flags;
+      newv[i].pcnt = oldv[i].pcnt;
+      newv[i].f = filedup(oldv[i].f);
+    }
+  }
   return 0;
 
-  /* err: */
-  /* // TODO: handle freeing new pagetable */
-  /* return -1; */
+  err:
+  // TODO: handle freeing new pagetable
+  return -1;
 }
 
 // mark a PTE invalid for user access.
