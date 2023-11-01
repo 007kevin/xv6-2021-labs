@@ -161,7 +161,6 @@ freeproc(struct proc *p)
     v = &p->vmas[i];
     if (v->len){
       vmaunmap(p->pagetable, v, v->addr, v->len);
-      v->len=0;
     }
   }
 
@@ -377,6 +376,29 @@ exit(int status)
     }
   }
 
+  for(int i = 0; i < VMLEN; ++i)
+      vmaunmap(p->pagetable, &p->vmas[i], p->vmas[i].addr, p->vmas[i].addr + VMSIZE);
+
+  // DEBUG - see which vma are still mapped
+  for(int i = 0; i < VMLEN; ++i){
+    if (p->vmas[i].len)
+      panic("vma not freed");
+    uint64 a;
+    pte_t *pte;
+    pagetable_t pagetable = p->pagetable;
+    for(a = p->vmas[i].addr; a < p->vmas[i].addr + VMSIZE; a += PGSIZE){
+      if((pte = walk(pagetable, a, 0)) == 0)
+        continue;
+      if(*pte & PTE_V){
+        printf("v[%d] address %p not freed\n", i, a);
+        panic("DEBUG PANIC");
+      }
+
+      if(PTE_FLAGS(*pte) == PTE_V){
+        panic("didn't free");
+      }
+    }
+  }
 
 
   begin_op();

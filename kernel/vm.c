@@ -207,7 +207,7 @@ vmaunmap(pagetable_t pagetable, struct vma *v, uint64 addr, int len){
   
   for(a = addr; a < PGROUNDUP(addr + len); a += PGSIZE){
     if((pte = walk(pagetable, a, 0)) == 0)
-      panic("uvmunmap: walk");
+      continue; // probably removed by a previous vma unmapping
     if((*pte & PTE_V) == 0)
       continue; // skip unmapped pages
     if(PTE_FLAGS(*pte) == PTE_V)
@@ -238,7 +238,7 @@ vmaunmap(pagetable_t pagetable, struct vma *v, uint64 addr, int len){
   // If munmap removed all pages of a previous mmap, it should
   // decrement the reference count of the corresponding struct file
   int remove = 1;
-  for(a = v->addr; a < PGROUNDUP(v->addr + v->len); a += PGSIZE){
+  for(a = v->addr; a < v->addr + v->len; a += PGSIZE){
     pte_t * pte = walk(pagetable, a, 1);
     if (*pte & PTE_M){
       remove = 0;
@@ -399,30 +399,33 @@ int
 vmacopy(pagetable_t oldp, struct vma *oldv, pagetable_t newp, struct vma *newv)
 {
   pte_t *pte;
-  uint64 pa, i;
+  uint64 pa, i, a;
   uint flags;
   char *mem;
 
-  for(i = VMAREA; i < VMAREA + (VMSIZE * VMLEN); i += PGSIZE){
-    if((pte = walk(oldp, i, 0)) == 0)
-      continue;
-    if((*pte & PTE_V) == 0)
-      continue; // skip unmapped pages
-    if(PTE_FLAGS(*pte) == PTE_V)
-      continue; // skip, not a leaf
-    pa = PTE2PA(*pte);
-    flags = PTE_FLAGS(*pte);
-    if((mem = kalloc()) == 0)
-      goto err;
-    memmove(mem, (char*) pa, PGSIZE);
-    if(mappages(newp, i, PGSIZE, (uint64)mem, flags) != 0){
-      kfree(mem);
-      goto err;
-    }
-  }
-
   for(i = 0; i < VMLEN; ++i){
-    if (oldv[i].len > 0){
+    if (oldv[i].len){
+      for (a = oldv[i].addr; a < PGROUNDUP(oldv[i].addr + oldv[i].len); a += PGSIZE){
+        if((pte = walk(oldp, a, 0)) == 0){
+          continue;
+        }
+        if((*pte & PTE_V) == 0){
+          continue; // skip unmapped pages
+        }
+        if(PTE_FLAGS(*pte) == PTE_V){
+          continue; // skip, not a leaf
+        }
+        pa = PTE2PA(*pte);
+        flags = PTE_FLAGS(*pte);
+        if((mem = kalloc()) == 0)
+          goto err;
+        memmove(mem, (char*) pa, PGSIZE);
+        if(mappages(newp, a, PGSIZE, (uint64)mem, flags) != 0){
+          kfree(mem);
+          goto err;
+        }
+      }
+
       newv[i].addr = oldv[i].addr;
       newv[i].len = oldv[i].len;
       newv[i].prot = oldv[i].prot;
