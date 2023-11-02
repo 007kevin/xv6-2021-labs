@@ -197,17 +197,15 @@ void
 vmaunmap(pagetable_t pagetable, struct vma *v, uint64 addr, int len){
   uint64 a;
   pte_t *pte;
-
-  if((addr % PGSIZE) != 0)
-    panic("vmaunmap: not aligned");
+  uint64 aligned_addr = PGROUNDDOWN(addr);
 
   if(v->flags & MAP_SHARED){
     begin_op();
   }
   
-  for(a = addr; a < PGROUNDUP(addr + len); a += PGSIZE){
+  for(a = aligned_addr; a < addr + len; a += PGSIZE){
     if((pte = walk(pagetable, a, 0)) == 0)
-      continue; // probably removed by a previous vma unmapping
+      continue; // page was removed at some previous unmap call
     if((*pte & PTE_V) == 0)
       continue; // skip unmapped pages
     if(PTE_FLAGS(*pte) == PTE_V)
@@ -220,14 +218,12 @@ vmaunmap(pagetable_t pagetable, struct vma *v, uint64 addr, int len){
       struct file *f = v->f;
       ilock(f->ip);
       // TODO: might need to account for EOF
-      writei(f->ip, 0, pa, a-addr, PGSIZE);
+      writei(f->ip, 0, pa, a-aligned_addr, PGSIZE);
       iunlock(f->ip);
     }
 
     // free the physical memory
     kfree((void*)pa);
-
-    // remove mapping from page table
     *pte = 0;
   }
 
@@ -405,7 +401,7 @@ vmacopy(pagetable_t oldp, struct vma *oldv, pagetable_t newp, struct vma *newv)
 
   for(i = 0; i < VMLEN; ++i){
     if (oldv[i].len){
-      for (a = oldv[i].addr; a < PGROUNDUP(oldv[i].addr + oldv[i].len); a += PGSIZE){
+      for (a = oldv[i].addr; a < oldv[i].addr + oldv[i].len; a += PGSIZE){
         if((pte = walk(oldp, a, 0)) == 0){
           continue;
         }
@@ -417,6 +413,9 @@ vmacopy(pagetable_t oldp, struct vma *oldv, pagetable_t newp, struct vma *newv)
         }
         pa = PTE2PA(*pte);
         flags = PTE_FLAGS(*pte);
+        if ((*pte & PTE_M) == 0){
+          printf("fork not marked. a=%p, *pte=%p, flags=%d\n", a, *pte, flags);
+        }
         if((mem = kalloc()) == 0)
           goto err;
         memmove(mem, (char*) pa, PGSIZE);
@@ -425,7 +424,6 @@ vmacopy(pagetable_t oldp, struct vma *oldv, pagetable_t newp, struct vma *newv)
           goto err;
         }
       }
-
       newv[i].addr = oldv[i].addr;
       newv[i].len = oldv[i].len;
       newv[i].prot = oldv[i].prot;
@@ -572,7 +570,14 @@ vmaread(pagetable_t pagetable, struct vma *v, uint64 va)
   iunlock(f->ip);
 
   // need to map prot to pte permissions
-  int perm = 0;
+  pte_t *pte;
+  if((pte = walk(pagetable, va, 0)) == 0){
+    panic("vmaread: walk");
+  }
+  int perm = PTE_FLAGS(*pte);
+  if ((perm & PTE_M) == 0)
+    panic("vmaread: expected to be marked");
+
   if (v->prot & PROT_READ)
     perm |= PTE_R;
   if (v->prot & PROT_WRITE)

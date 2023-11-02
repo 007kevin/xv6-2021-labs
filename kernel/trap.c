@@ -66,7 +66,7 @@ usertrap(void)
 
     syscall();
   }
-  else if(r_scause() == 15 || r_scause() == 13) {
+  else if(r_scause() == 13) {
     // See xv6 book:
     // Chapter 3.2 Kernel Address Space
     // Chatper 4.6 Page-fault exceptions

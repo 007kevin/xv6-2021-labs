@@ -531,7 +531,8 @@ sys_mmap(void)
     panic("sys_mmap: myproc");
 
   struct vma *v = 0;
-  for(int i = 0; i < VMLEN; ++i)
+  int i;
+  for(i = 0; i < VMLEN; ++i)
     if(p->vmas[i].len == 0){
       v = &p->vmas[i];
       break;
@@ -541,7 +542,7 @@ sys_mmap(void)
 
   // indicate these pages are mapped to a file
   pte_t *pte;
-  for(uint64 a =  v->addr; a < PGROUNDUP(v->addr+len); a+=PGSIZE){
+  for(uint64 a =  v->addr; a < v->addr+len; a+=PGSIZE){
     pte = walk(p->pagetable, a, 1);
     *pte |= PTE_M;
   }
@@ -584,9 +585,8 @@ sys_munmap(void)
   if ((p = myproc()) < 0)
     panic("sys_munmap: myproc");
   v = &p->vmas[vidx];
-  if (v->len){
-    vmaunmap(p->pagetable, v, PGROUNDDOWN(addr), len);
-  }
+  if (v->len)
+    vmaunmap(p->pagetable, v, addr, len);
 
   return 0;
 }

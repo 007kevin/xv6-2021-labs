@@ -207,6 +207,10 @@ proc_pagetable(struct proc *p)
 
   for(uint64 i = 0; i < VMLEN; i++){
     p->vmas[i].addr = VMAREA + (i*VMSIZE);
+    p->vmas[i].len = 0;
+    p->vmas[i].prot =0;
+    p->vmas[i].flags =0;
+    p->vmas[i].f = 0;
   }
 
   return pagetable;
@@ -302,8 +306,7 @@ fork(void)
   }
   np->sz = p->sz;
 
-  // TODO: copy process vmas to child and copy VMAREA. Don't forget to increase file reference
-  //       (via filedup)
+  // Copy vmas to child
   if(vmacopy(p->pagetable, p->vmas, np->pagetable, np->vmas) < 0){
     freeproc(np);
     release(&np->lock);
@@ -357,8 +360,6 @@ reparent(struct proc *p)
 // Exit the current process. Does not return.
 // An exited process remains in the zombie state
 // until its parent calls wait().
-// TODO: Modify exit to unmap the process's mapped
-//       regions as if munmap had been called.
 void
 exit(int status)
 {
@@ -376,30 +377,9 @@ exit(int status)
     }
   }
 
-  for(int i = 0; i < VMLEN; ++i)
-      vmaunmap(p->pagetable, &p->vmas[i], p->vmas[i].addr, p->vmas[i].addr + VMSIZE);
-
-  // DEBUG - see which vma are still mapped
-  for(int i = 0; i < VMLEN; ++i){
-    if (p->vmas[i].len)
-      panic("vma not freed");
-    uint64 a;
-    pte_t *pte;
-    pagetable_t pagetable = p->pagetable;
-    for(a = p->vmas[i].addr; a < p->vmas[i].addr + VMSIZE; a += PGSIZE){
-      if((pte = walk(pagetable, a, 0)) == 0)
-        continue;
-      if(*pte & PTE_V){
-        printf("v[%d] address %p not freed\n", i, a);
-        panic("DEBUG PANIC");
-      }
-
-      if(PTE_FLAGS(*pte) == PTE_V){
-        panic("didn't free");
-      }
-    }
-  }
-
+  /* for(int i = 0; i < VMLEN; ++i) */
+  /*   if (p->vmas[i].len) */
+  /*     vmaunmap(p->pagetable, &p->vmas[i], p->vmas[i].addr, p->vmas[i].len); */
 
   begin_op();
   iput(p->cwd);
