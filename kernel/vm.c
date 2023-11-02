@@ -233,20 +233,17 @@ vmaunmap(pagetable_t pagetable, struct vma *v, uint64 addr, int len){
 
   // If munmap removed all pages of a previous mmap, it should
   // decrement the reference count of the corresponding struct file
-  int remove = 1;
-  for(a = v->addr; a < v->addr + v->len; a += PGSIZE){
-    pte_t * pte = walk(pagetable, a, 1);
-    if (*pte & PTE_M){
-      remove = 0;
-      break;
-    }
-  }
-  if (remove){
+  // TODO: optimize bitmask
+  for(uint64 i = (aligned_addr - v->addr)/PGSIZE; i < (PGROUNDUP(addr + len - v->addr)/PGSIZE); ++i)
+    v->mapped &= ~(1<<i);
+
+  if (v->mapped == 0){
     v->len = 0;
-    v->prot =0;
-    v->flags =0;
+    v->prot = 0;
+    v->flags = 0;
     fileclose(v->f);
     v->f = 0;
+    v->mapped = 0;
   }
 }
 
@@ -413,9 +410,6 @@ vmacopy(pagetable_t oldp, struct vma *oldv, pagetable_t newp, struct vma *newv)
         }
         pa = PTE2PA(*pte);
         flags = PTE_FLAGS(*pte);
-        if ((*pte & PTE_M) == 0){
-          printf("fork not marked. a=%p, *pte=%p, flags=%d\n", a, *pte, flags);
-        }
         if((mem = kalloc()) == 0)
           goto err;
         memmove(mem, (char*) pa, PGSIZE);
@@ -429,6 +423,7 @@ vmacopy(pagetable_t oldp, struct vma *oldv, pagetable_t newp, struct vma *newv)
       newv[i].prot = oldv[i].prot;
       newv[i].flags = oldv[i].flags;
       newv[i].f = filedup(oldv[i].f);
+      newv[i].mapped = oldv[i].mapped;
     }
   }
   return 0;
@@ -571,13 +566,10 @@ vmaread(pagetable_t pagetable, struct vma *v, uint64 va)
 
   // need to map prot to pte permissions
   pte_t *pte;
-  if((pte = walk(pagetable, va, 0)) == 0){
+  if((pte = walk(pagetable, va, 1)) == 0){
     panic("vmaread: walk");
   }
   int perm = PTE_FLAGS(*pte);
-  if ((perm & PTE_M) == 0)
-    panic("vmaread: expected to be marked");
-
   if (v->prot & PROT_READ)
     perm |= PTE_R;
   if (v->prot & PROT_WRITE)

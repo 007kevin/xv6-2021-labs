@@ -541,11 +541,10 @@ sys_mmap(void)
     panic("sys_mmap: v");
 
   // indicate these pages are mapped to a file
-  pte_t *pte;
-  for(uint64 a =  v->addr; a < v->addr+len; a+=PGSIZE){
-    pte = walk(p->pagetable, a, 1);
-    *pte |= PTE_M;
-  }
+  // TODO: optimize bitmask
+  v->mapped = 0;
+  for(uint64 i = 0; i < PGROUNDUP(len)/PGSIZE; i++)
+    v->mapped |= 1<<i;
 
   v->prot = prot;
   v->flags = flags;

@@ -211,6 +211,7 @@ proc_pagetable(struct proc *p)
     p->vmas[i].prot =0;
     p->vmas[i].flags =0;
     p->vmas[i].f = 0;
+    p->vmas[i].mapped = 0;
   }
 
   return pagetable;
@@ -377,9 +378,9 @@ exit(int status)
     }
   }
 
-  /* for(int i = 0; i < VMLEN; ++i) */
-  /*   if (p->vmas[i].len) */
-  /*     vmaunmap(p->pagetable, &p->vmas[i], p->vmas[i].addr, p->vmas[i].len); */
+  for(int i = 0; i < VMLEN; ++i)
+    if (p->vmas[i].len)
+      vmaunmap(p->pagetable, &p->vmas[i], p->vmas[i].addr, p->vmas[i].len);
 
   begin_op();
   iput(p->cwd);

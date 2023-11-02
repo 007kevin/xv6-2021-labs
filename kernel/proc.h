@@ -89,6 +89,11 @@ struct vma {
   int prot;
   int flags;
   struct file *f;
+
+  // Tracks which pages are currently mapped to a file to aid in vmaunmap.
+  // Preferred over using PTE_M pte flags as it gets complicated during forks.
+  // Assumes VMSIZE/PGSIZE < 64, meaning mapped files are limited to VMSIZE.
+  uint64 mapped;
 };
 
 // Per-process state
